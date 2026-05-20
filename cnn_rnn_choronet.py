@@ -64,3 +64,39 @@ linear_out.shape
 gru4= nn.GRU(input_size=96,hidden_size=32,batch_first=True)
 gru_out4, _ = gru4(linear_out.permute(0,2,1))
 gru_out4.shape
+
+class ChronoNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.block1=Block(22)
+        self.block2=Block(96)
+        self.block3=Block(96)
+        self.gru1= nn.GRU(input_size=96,hidden_size=32,batch_first=True)
+        self.gru2= nn.GRU(input_size=32,hidden_size=32,batch_first=True)
+        self.gru3= nn.GRU(input_size=64,hidden_size=32,batch_first=True)
+        self.gru4= nn.GRU(input_size=96,hidden_size=32,batch_first=True)
+        self.gru_linear=nn.Linear(in_features=1875, out_features=1)
+        self.flatten=nn.Flatten()
+        self.fcl=nn.Linear(1875 * 32,1)
+        self.relu=nn.ReLU()
+
+    def forward(self,x):
+        x=self.block1(x)
+        x=self.block2(x)
+        x=self.block3(x)
+        x=x.permute(0,2,1)
+        gru_out1,_=self.gru1(x)
+        gru_out2,_=self.gru2(gru_out1)
+        gru_out_concat12=torch.cat((gru_out1,gru_out2),dim=2)
+        gru_out3,_=self.gru3(gru_out_concat12)
+        gru_out_final=torch.cat((gru_out1,gru_out2,gru_out3),dim=2)
+
+        linear_out=self.relu(self.gru_linear(gru_out_final.permute(0,2,1)))
+        gru_out4,_=self.gru4(gru_out_final)
+        x=self.flatten(gru_out4)
+        x=self.fcl(x)
+        return x
+# model= ChronoNet()
+model=ChronoNet()
+out=model(input)
+out.shape
